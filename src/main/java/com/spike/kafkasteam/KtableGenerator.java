@@ -1,16 +1,13 @@
 package com.spike.kafkasteam;
 
-import org.apache.kafka.common.protocol.types.Field;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 
-import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -38,36 +35,43 @@ public class KtableGenerator {
     public static void main(final String[] args) {
 
         final StreamsBuilder builder = new StreamsBuilder();
-        Serde<Transaction> transactionSerde = null;
-        Serde<ResolvedTransaction> resolvedTransactionSerde = null;
-        Serde<BankMaster> bankMasterSerde = null;
-        Serde<String> stringSerde = null;
+        Serde<MyTransaction> transactionSerde =  Serdes.serdeFrom(new TransactionSerializer(), new TransactionDeserializer());
+        Serde<ResolvedTransaction> resolvedTransactionSerde = Serdes.serdeFrom(new ResolvedTransactionSerializer(), new ResolvedTransactionDeserializer());
+        Serde<BankMaster> bankMasterSerde =  Serdes.serdeFrom(new BankMasterSerializer(), new BankMasterDeserializer());;
+        Serde<String> stringSerde = Serdes.serdeFrom(String.class);
 
 
         KStream<String, Long> left = null;
         KStream<String, Double> right = null;
 
 
-
-        final KStream<String, Transaction> transactions = builder.stream("transactions",
+        KStream<String, MyTransaction> transactions_3 = builder.stream("transactions_5",
                 Consumed.with(stringSerde, transactionSerde));
 
-        final GlobalKTable<String, BankMaster> bankMasterKTable = builder.globalTable("bank_master",
+        System.out.print("Completed the initial parsing");
+
+
+
+
+        final GlobalKTable<String, BankMaster> bankMasterGlobalKTable = builder.globalTable("bank_master_4",
                 Consumed.with(Serdes.String(), bankMasterSerde));
 
 
+        System.out.print("Completed the second parsing");
+
         KStream<String, ResolvedTransaction> resolvedTransactions =
-                transactions.map((key, transaction) -> KeyValue.pair(transaction.ifscCode, transaction)).
-                join(bankMasterKTable, (left1, right1) -> right1.transactionId,
+                transactions_3.
+                leftJoin(bankMasterGlobalKTable, (left1, right1) -> left1,
                         (left2, right2) ->
-                                new ResolvedTransaction(right2.ifscCode, left2.transactionId, right2.branchName));
+                                new ResolvedTransaction(right2.ifscCode, left2.transactionId, right2.branchName)
+                        );
 
 //        final KStream<String, ResolvedTransaction> resolvedTransactions = transactions.map(
 //                (key, transaction) -> KeyValue.pair(transaction.IfscCode, transaction)).
 //                join(bankMasterKTable,(transaction, bankMaster, value) -> "" , (transaction, bankmaster) -> );
 
 //        KStream<String, ResolvedTransaction> resolvedTransactions = transactions.join(bankMasterKTable,
-//                (Transaction transaction, BankMaster bankMaster) -> new ResolvedTransaction(transaction.ifscCode, transaction.transactionId, bankMaster.branchName), /* ValueJoiner */
+//                (MyTransaction transaction, BankMaster bankMaster) -> new ResolvedTransaction(transaction.ifscCode, transaction.transactionId, bankMaster.branchName), /* ValueJoiner */
 //                Serdes.String(), /* key */
 //                transactionSerde    /* left value */
 //        );
