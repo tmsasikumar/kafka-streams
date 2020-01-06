@@ -1,9 +1,10 @@
 package com.spike.kafkasteam;
 
-import com.sun.tools.javac.util.Pair;
+import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
@@ -46,30 +47,30 @@ public class KtableGenerator {
         KStream<String, Long> left = null;
         KStream<String, Double> right = null;
 
-        KStream<String, String> joined = left.join(right,
-                (leftValue, rightValue) -> "left=" + leftValue + ", right=" + rightValue, /* ValueJoiner */
-                JoinWindows.of(Duration.ofMinutes(5)),
-                Joined.with(
-                        Serdes.String(), /* key */
-                        Serdes.Long(),   /* left value */
-                        Serdes.Double())  /* right value */
-        );
+
 
         final KStream<String, Transaction> transactions = builder.stream("transactions",
                 Consumed.with(stringSerde, transactionSerde));
-
-
 
         final GlobalKTable<String, BankMaster> bankMasterKTable = builder.globalTable("bank_master",
                 Consumed.with(Serdes.String(), bankMasterSerde));
 
 
+        KStream<String, ResolvedTransaction> resolvedTransactions =
+                transactions.map((key, transaction) -> KeyValue.pair(transaction.ifscCode, transaction)).
+                join(bankMasterKTable, (left1, right1) -> right1.transactionId,
+                        (left2, right2) ->
+                                new ResolvedTransaction(right2.ifscCode, left2.transactionId, right2.branchName));
 
 //        final KStream<String, ResolvedTransaction> resolvedTransactions = transactions.map(
 //                (key, transaction) -> KeyValue.pair(transaction.IfscCode, transaction)).
 //                join(bankMasterKTable,(transaction, bankMaster, value) -> "" , (transaction, bankmaster) -> );
-//
 
+//        KStream<String, ResolvedTransaction> resolvedTransactions = transactions.join(bankMasterKTable,
+//                (Transaction transaction, BankMaster bankMaster) -> new ResolvedTransaction(transaction.ifscCode, transaction.transactionId, bankMaster.branchName), /* ValueJoiner */
+//                Serdes.String(), /* key */
+//                transactionSerde    /* left value */
+//        );
 
         resolvedTransactions.to("transaction_output", Produced.with(Serdes.String(), resolvedTransactionSerde));
 
