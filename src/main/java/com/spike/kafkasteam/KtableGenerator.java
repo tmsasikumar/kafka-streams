@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
@@ -13,7 +14,6 @@ import java.util.concurrent.CountDownLatch;
 
 
 public class KtableGenerator {
-
 
 
     static Properties getStreamsConfig() {
@@ -35,50 +35,39 @@ public class KtableGenerator {
     public static void main(final String[] args) {
 
         final StreamsBuilder builder = new StreamsBuilder();
-        Serde<MyTransaction> transactionSerde =  Serdes.serdeFrom(new TransactionSerializer(), new TransactionDeserializer());
+        Serde<MyTransaction> transactionSerde = Serdes.serdeFrom(new TransactionSerializer(), new TransactionDeserializer());
         Serde<ResolvedTransaction> resolvedTransactionSerde = Serdes.serdeFrom(new ResolvedTransactionSerializer(), new ResolvedTransactionDeserializer());
-        Serde<BankMaster> bankMasterSerde =  Serdes.serdeFrom(new BankMasterSerializer(), new BankMasterDeserializer());;
+        Serde<BankMaster> bankMasterSerde = Serdes.serdeFrom(new BankMasterSerializer(), new BankMasterDeserializer());
+        ;
         Serde<String> stringSerde = Serdes.serdeFrom(String.class);
 
 
-        KStream<String, Long> left = null;
-        KStream<String, Double> right = null;
-
-
-        KStream<String, MyTransaction> transactions_3 = builder.stream("transactions_5",
+        KStream<String, MyTransaction> transactions = builder.stream("transactions_7",
                 Consumed.with(stringSerde, transactionSerde));
 
-        System.out.print("Completed the initial parsing");
+        KStream<String, MyTransaction> transactions_mapped =
+                transactions.map((key, value) -> KeyValue.pair(value.ifscCode, value));
 
 
+       // transactions_mapped.to("transaction_output_mapped_1", Produced.with(Serdes.String(), transactionSerde));
 
-
-        final GlobalKTable<String, BankMaster> bankMasterGlobalKTable = builder.globalTable("bank_master_4",
+        final GlobalKTable<String, BankMaster> bankMasterGlobalKTable = builder.globalTable("bank_master_6",
                 Consumed.with(Serdes.String(), bankMasterSerde));
 
 
-        System.out.print("Completed the second parsing");
 
         KStream<String, ResolvedTransaction> resolvedTransactions =
-                transactions_3.
-                leftJoin(bankMasterGlobalKTable, (left1, right1) -> left1,
-                        (left2, right2) ->
-                                new ResolvedTransaction(right2.ifscCode, left2.transactionId, right2.branchName)
+                transactions_mapped.
+                        leftJoin(bankMasterGlobalKTable, (left1, right1) -> left1,
+                                (transactionData, bankData) ->
+                                {
+                                    if(bankData != null)
+                                        return new ResolvedTransaction(bankData.ifscCode, transactionData.transactionId, bankData.branchName);
+                                    return new ResolvedTransaction(transactionData.ifscCode, transactionData.transactionId, "");
+                                }
                         );
 
-//        final KStream<String, ResolvedTransaction> resolvedTransactions = transactions.map(
-//                (key, transaction) -> KeyValue.pair(transaction.IfscCode, transaction)).
-//                join(bankMasterKTable,(transaction, bankMaster, value) -> "" , (transaction, bankmaster) -> );
-
-//        KStream<String, ResolvedTransaction> resolvedTransactions = transactions.join(bankMasterKTable,
-//                (MyTransaction transaction, BankMaster bankMaster) -> new ResolvedTransaction(transaction.ifscCode, transaction.transactionId, bankMaster.branchName), /* ValueJoiner */
-//                Serdes.String(), /* key */
-//                transactionSerde    /* left value */
-//        );
-
         resolvedTransactions.to("transaction_output", Produced.with(Serdes.String(), resolvedTransactionSerde));
-
-
 
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), getStreamsConfig());
