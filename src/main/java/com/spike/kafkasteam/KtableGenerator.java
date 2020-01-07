@@ -42,32 +42,35 @@ public class KtableGenerator {
         Serde<String> stringSerde = Serdes.serdeFrom(String.class);
 
 
-        KStream<String, MyTransaction> transactions = builder.stream("transactions_7",
-                Consumed.with(stringSerde, transactionSerde));
+        try {
+            KStream<String, MyTransaction> transactions = builder.stream("transactionmaster",
+                    Consumed.with(stringSerde, transactionSerde));
 
-        KStream<String, MyTransaction> transactions_mapped =
-                transactions.map((key, value) -> KeyValue.pair(value.ifscCode, value));
+            KStream<String, MyTransaction> transactions_mapped =
+                    transactions.map((key, value) -> KeyValue.pair(value.ifscCode, value));
 
-
-       // transactions_mapped.to("transaction_output_mapped_1", Produced.with(Serdes.String(), transactionSerde));
-
-        final GlobalKTable<String, BankMaster> bankMasterGlobalKTable = builder.globalTable("bank_master_6",
-                Consumed.with(Serdes.String(), bankMasterSerde));
+            final GlobalKTable<String, BankMaster> bankMasterGlobalKTable = builder.globalTable("bankmaster",
+                    Consumed.with(Serdes.String(), bankMasterSerde));
 
 
+            KStream<String, ResolvedTransaction> resolvedTransactions =
+                    transactions_mapped.
+                            leftJoin(bankMasterGlobalKTable, (left1, right1) -> left1,
+                                    (transactionData, bankData) ->
+                                    {
+                                        if (bankData != null)
+                                            return new ResolvedTransaction(bankData.ifscCode, transactionData.transactionId,
+                                                    transactionData.customerId,
+                                                    transactionData.description, bankData.branchName);
+                                        return new ResolvedTransaction(transactionData.ifscCode, transactionData.transactionId, transactionData.customerId, transactionData.description, "");
+                                    }
+                            );
 
-        KStream<String, ResolvedTransaction> resolvedTransactions =
-                transactions_mapped.
-                        leftJoin(bankMasterGlobalKTable, (left1, right1) -> left1,
-                                (transactionData, bankData) ->
-                                {
-                                    if(bankData != null)
-                                        return new ResolvedTransaction(bankData.ifscCode, transactionData.transactionId, bankData.branchName);
-                                    return new ResolvedTransaction(transactionData.ifscCode, transactionData.transactionId, "");
-                                }
-                        );
-
-        resolvedTransactions.to("transaction_output", Produced.with(Serdes.String(), resolvedTransactionSerde));
+            resolvedTransactions.to("transactionbank", Produced.with(Serdes.String(), resolvedTransactionSerde));
+        }
+        catch (Exception e) {
+            System.out.print("Exception occured"+ e.getMessage());
+        }
 
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), getStreamsConfig());

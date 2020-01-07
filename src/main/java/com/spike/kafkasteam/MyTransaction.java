@@ -18,7 +18,25 @@ class MyTransaction {
         this.ifscCode = ifscCode;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
+    }
+
     String transactionId;
+    String description;
+    String customerId;
     String ifscCode;
 }
 
@@ -47,6 +65,24 @@ class ResolvedTransaction {
     String branchName;
     String ifscCode;
     String transactionId;
+    String description;
+    String customerId;
+
+    public String getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
     public String getBranchName() {
         return branchName;
@@ -72,10 +108,13 @@ class ResolvedTransaction {
         this.transactionId = transactionId;
     }
 
-    ResolvedTransaction(String ifscCode, String transactionId, String branchName) {
+    ResolvedTransaction(String ifscCode, String transactionId, String customerId, String description, String branchName) {
         this.ifscCode = ifscCode;
         this.transactionId = transactionId;
+        this.customerId = customerId;
+        this.description = description;
         this.branchName = branchName;
+
     }
 }
 
