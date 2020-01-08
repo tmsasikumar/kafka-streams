@@ -61,6 +61,27 @@ class BankMaster {
     String branchName;
 }
 
+class OutletTransaction {
+    String transactionId;
+    String outletName;
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public String getOutletName() {
+        return outletName;
+    }
+
+    public void setOutletName(String outletName) {
+        this.outletName = outletName;
+    }
+}
+
 class ResolvedTransaction {
     String branchName;
     String ifscCode;
@@ -108,6 +129,9 @@ class ResolvedTransaction {
         this.transactionId = transactionId;
     }
 
+    public ResolvedTransaction() {
+    }
+
     ResolvedTransaction(String ifscCode, String transactionId, String customerId, String description, String branchName) {
         this.ifscCode = ifscCode;
         this.transactionId = transactionId;
@@ -115,6 +139,23 @@ class ResolvedTransaction {
         this.description = description;
         this.branchName = branchName;
 
+    }
+}
+
+class ResolvedTransactionOutlet extends ResolvedTransaction {
+    String outletName;
+
+    public String getOutletName() {
+        return outletName;
+    }
+
+    public void setOutletName(String outletName) {
+        this.outletName = outletName;
+    }
+
+    public ResolvedTransactionOutlet(ResolvedTransaction transactionData, String outletName) {
+        super(transactionData.ifscCode, transactionData.transactionId, transactionData.customerId, transactionData.description, transactionData.branchName);
+        this.outletName = outletName;
     }
 }
 
