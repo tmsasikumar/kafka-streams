@@ -1,5 +1,7 @@
 package com.spike.kafkasteam;
 
+import com.spike.kafkasteam.deserializers.*;
+import com.spike.kafkasteam.models.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
@@ -8,6 +10,7 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
+import serializers.*;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -72,7 +75,7 @@ public class KtableGenerator {
                 Consumed.with(stringSerde, transactionSerde));
 
         KStream<String, MyTransaction> transactions_mapped =
-                transactions.map((key, value) -> KeyValue.pair(value.transactionId, value));
+                transactions.map((key, value) -> KeyValue.pair(value.getTransactionId(), value));
 
         final GlobalKTable<String, BankMaster> bankMasterGlobalKTable = builder.globalTable("bankmaster",
                 Consumed.with(Serdes.String(), bankMasterSerde));
@@ -80,14 +83,18 @@ public class KtableGenerator {
 
         KStream<String, ResolvedTransaction> resolvedTransactions =
                 transactions_mapped.
-                        leftJoin(bankMasterGlobalKTable, (key, value) -> value.ifscCode,
+                        leftJoin(bankMasterGlobalKTable, (key, value) -> value.getIfscCode(),
                                 (transactionData, bankData) ->
                                 {
                                     if (bankData != null)
-                                        return new ResolvedTransaction(bankData.ifscCode, transactionData.transactionId,
-                                                transactionData.customerId,
-                                                transactionData.description, bankData.branchName);
-                                    return new ResolvedTransaction(transactionData.ifscCode, transactionData.transactionId, transactionData.customerId, transactionData.description, "");
+                                        return new ResolvedTransaction(bankData.getIfscCode(), transactionData.getTransactionId(),
+                                                transactionData.getCustomerId(),
+                                                transactionData.getDescription(), bankData.getBranchName());
+                                    return new ResolvedTransaction(transactionData.getIfscCode(),
+                                            transactionData.getTransactionId(),
+                                            transactionData.getCustomerId(),
+                                            transactionData.getDescription(),
+                                            "");
                                 }
                         );
 
@@ -104,7 +111,7 @@ public class KtableGenerator {
         KTable<String, ResolvedTransactionOutlet> resolvedOutletTransactions = transactionbankKTable.leftJoin(outletKTable,
                 (transaction, outlet) -> {
                     if (outlet != null)
-                        return new ResolvedTransactionOutlet(transaction, outlet.outletName);
+                        return new ResolvedTransactionOutlet(transaction, outlet.getOutletName());
                     return new ResolvedTransactionOutlet(transaction, "");
                 }
         );

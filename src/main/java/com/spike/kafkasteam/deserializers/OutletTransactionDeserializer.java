@@ -1,13 +1,13 @@
-package com.spike.kafkasteam;
+package com.spike.kafkasteam.deserializers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.common.errors.SerializationException;
+import com.spike.kafkasteam.models.OutletTransaction;
 import org.apache.kafka.common.serialization.Deserializer;
 
 import java.util.Map;
 import java.util.Objects;
 
-public class TransactionDeserializer implements Deserializer<MyTransaction> {
+public class OutletTransactionDeserializer implements Deserializer<OutletTransaction> {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -17,16 +17,16 @@ public class TransactionDeserializer implements Deserializer<MyTransaction> {
     }
 
     @Override
-    public MyTransaction deserialize(String topic, byte[] bytes) {
+    public OutletTransaction deserialize(String topic, byte[] bytes) {
         if (Objects.isNull(bytes)) {
             return null;
         }
 
-        MyTransaction data;
+        OutletTransaction data = new OutletTransaction();
         try {
-            data = objectMapper.treeToValue(objectMapper.readTree(bytes), MyTransaction.class);
+            data = objectMapper.treeToValue(objectMapper.readTree(bytes), OutletTransaction.class);
         } catch (Exception e) {
-            throw new SerializationException(e);
+            System.out.println("Exception occured while deserializing OutletTransaction -> " + e.getMessage());
         }
 
         return data;

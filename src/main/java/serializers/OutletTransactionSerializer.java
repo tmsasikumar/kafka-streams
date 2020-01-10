@@ -1,14 +1,13 @@
-package com.spike.kafkasteam;
+package serializers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.common.errors.SerializationException;
-import org.apache.kafka.common.serialization.Deserializer;
+import com.spike.kafkasteam.models.OutletTransaction;
 import org.apache.kafka.common.serialization.Serializer;
 
 import java.util.Map;
 import java.util.Objects;
 
-public class BankMasterSerializer implements Serializer<BankMaster> {
+public class OutletTransactionSerializer implements Serializer<OutletTransaction> {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -18,7 +17,7 @@ public class BankMasterSerializer implements Serializer<BankMaster> {
     }
 
     @Override
-    public byte[] serialize(String topic, BankMaster data) {
+    public byte[] serialize(String topic, OutletTransaction data) {
 
         if (Objects.isNull(data)) {
             return null;
@@ -26,7 +25,8 @@ public class BankMasterSerializer implements Serializer<BankMaster> {
         try {
             return objectMapper.writeValueAsBytes(data);
         } catch (Exception e) {
-            throw new SerializationException("Error serializing message", e);
+            System.out.println("Exception occured while serializing OutletTransaction -> " + e.getMessage());
+            return null;
         }
     }
 

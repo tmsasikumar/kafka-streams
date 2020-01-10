@@ -1,7 +1,7 @@
-package com.spike.kafkasteam;
+package serializers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.common.errors.SerializationException;
+import com.spike.kafkasteam.models.MyTransaction;
 import org.apache.kafka.common.serialization.Serializer;
 
 import java.util.Map;
@@ -25,7 +25,8 @@ public class TransactionSerializer implements Serializer<MyTransaction> {
         try {
             return objectMapper.writeValueAsBytes(data);
         } catch (Exception e) {
-            throw new SerializationException("Error serializing message", e);
+            System.out.println("Exception occured while serializing MyTransactions -> " + e.getMessage());
+            return null;
         }
     }
 
